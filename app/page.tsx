@@ -166,17 +166,31 @@ export default function VijiVoiceAssistant() {
     }
   };
 
-  const speakText = (text: string, pitch = 1.0, rate = 1.0) => {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      stopSpeaking();
+ const speakText = (text: string, pitch = 0.75, rate = 1.0) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+
+    stopSpeaking();
+
+    const executeSpeak = () => {
+      const availableVoices = window.speechSynthesis.getVoices();
+      const maleVoice = getPreferredMaleVoice(availableVoices);
+
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.pitch = pitch;
+      
+      // Pitch is strictly set to deep male level (0.75)
+      utterance.pitch = 0.75; 
       utterance.rate = rate;
 
-      const voices = window.speechSynthesis.getVoices();
-      const maleVoice = getPreferredMaleVoice(voices);
-
-      if (maleVoice) utterance.voice = maleVoice;
+      if (maleVoice) {
+        utterance.voice = maleVoice;
+        utterance.lang = maleVoice.lang;
+        console.log("Active Voice Assigned:", maleVoice.name);
+      } else {
+        // Safe Fallback: Force system to lower pitch so even default system voice sounds male
+        utterance.lang = "en-IN";
+        utterance.pitch = 0.6;
+        console.warn("No native male voice found, pitch forced to 0.6");
+      }
 
       utterance.onstart = () => {
         setIsSpeaking(true);
@@ -206,6 +220,17 @@ export default function VijiVoiceAssistant() {
       utterance.onerror = handleSpeechEnd;
 
       window.speechSynthesis.speak(utterance);
+    };
+
+    // Handle Async Voices loading in Chrome/Safari
+    const currentVoices = window.speechSynthesis.getVoices();
+    if (currentVoices.length === 0) {
+      window.speechSynthesis.onvoiceschanged = () => {
+        executeSpeak();
+        window.speechSynthesis.onvoiceschanged = null;
+      };
+    } else {
+      executeSpeak();
     }
   };
 
