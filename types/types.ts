@@ -20,8 +20,15 @@ export type EmotionMode =
   | "neutral";
 
 export interface PersonaTheme {
+  bgGradient: string;
+  orbGlow: string;
+  accentBorder: string;
+  primaryText: string;
+  secondaryText: string;
+  cardBg: string;
   glow: string;
   border: string;
   badgeBg: string;
   ring: string;
 }
+export type ThemeMode = "dark" | "light";

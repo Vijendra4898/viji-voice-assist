@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { TelemetryData, EmotionMode } from "../types/types";
+import { TelemetryData, EmotionMode, ThemeMode } from "../types/types";
 import { getPreferredMaleVoice } from "./speechUtils";
 import { getPersonaTheme } from "./themeUtils";
 
@@ -18,14 +18,15 @@ export default function VijiVoiceAssistant() {
   const [loading, setLoading] = useState<boolean>(false);
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
   const [currentEmotion, setCurrentEmotion] = useState<EmotionMode>("neutral");
+  const [themeMode, setThemeMode] = useState<ThemeMode>("dark"); // Day & Night Mode State
   const [telemetry, setTelemetry] = useState<TelemetryData | null>(null);
   const [statusMessage, setStatusMessage] = useState<string>("Tap 'Activate Viji' to start");
+  
 
   const recognitionRef = useRef<any>(null);
   const isListeningRef = useRef<boolean>(false);
   const isProcessingRef = useRef<boolean>(false);
 
-  // Use Ref to always get latest emotion in async callbacks
   const currentEmotionRef = useRef<EmotionMode>(currentEmotion);
   currentEmotionRef.current = currentEmotion;
 
@@ -130,7 +131,7 @@ export default function VijiVoiceAssistant() {
     }
 
     const clientStartTime = Date.now();
-    const activeMode = currentEmotionRef.current; // Send current active selected mode
+    const activeMode = currentEmotionRef.current;
 
     try {
       const res = await fetch("/api/chat", {
@@ -145,7 +146,6 @@ export default function VijiVoiceAssistant() {
       if (data.text) {
         setAiResponse(data.text);
         
-        // FIX: Only update currentEmotion if user hasn't explicitly selected a non-neutral mode
         if (activeMode === "neutral" && data.emotion) {
           setCurrentEmotion(data.emotion);
         }
@@ -209,16 +209,29 @@ export default function VijiVoiceAssistant() {
     }
   };
 
-  const theme = getPersonaTheme(currentEmotion);
+  // Dynamic Theme based on Active Emotion + Day/Night Mode Selection
+  const theme = getPersonaTheme(currentEmotion, themeMode);
+  const isDark = themeMode === "dark";
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-4 sm:p-6 bg-[#030712] text-white font-sans relative overflow-hidden">
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f293715_1px,transparent_1px),linear-gradient(to_bottom,#1f293715_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
+    <main
+      className={`flex min-h-screen flex-col items-center justify-between p-4 sm:p-6 transition-colors duration-500 font-sans relative overflow-hidden bg-gradient-to-b ${theme.bgGradient} ${
+        isDark ? "text-white" : "text-slate-900"
+      }`}
+    >
+      {/* Background Grid Pattern */}
+      <div
+        className={`absolute inset-0 bg-[linear-gradient(to_right,#1f293715_1px,transparent_1px),linear-gradient(to_bottom,#1f293715_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none ${
+          !isDark && "opacity-40"
+        }`}
+      />
 
       {/* Header Bar */}
       <Header
         isSpeaking={isSpeaking}
         isListening={isListening}
+        themeMode={themeMode}
+        onToggleTheme={() => setThemeMode(isDark ? "light" : "dark")}
         onStopSpeaking={stopSpeaking}
         onToggleListening={toggleListening}
       />
